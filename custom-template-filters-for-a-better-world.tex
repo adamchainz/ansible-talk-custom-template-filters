@@ -43,6 +43,7 @@
 
     \begin{itemize}
         \item DevOps/DBA at YPlan
+        \item Ansible all the things!
     \end{itemize}
 
 \end{frame}
@@ -54,6 +55,10 @@
         \includegraphics[width=10cm]{anonymous}
     \end{center}
 
+    \begin{itemize}
+        \item No name, no tags, no CPU or network usage
+    \end{itemize}
+
 \end{frame}
 
 
@@ -62,6 +67,10 @@
     \begin{center}
         \includegraphics[width=10cm]{look-i-made-a-graph}
     \end{center}
+
+    \begin{itemize}
+        \item Revenue boosting?
+    \end{itemize}
 
 \end{frame}
 
@@ -72,13 +81,18 @@
         \includegraphics[width=10cm]{jeeves}
     \end{center}
 
+    \begin{itemize}
+        \item Oh Jenkins!
+    \end{itemize}
+
 \end{frame}
 
 
 \begin{frame}[fragile]\frametitle{Solution}
 
     \begin{itemize}
-        \item \textbf{clean\_resources} playbook every 15 minutes
+        \item Have \textbf{clean\_resources} playbook every 15 minutes to clean all the things
+        \item Added:
     \end{itemize}
 
     \begin{lstlisting}
@@ -88,13 +102,17 @@
          WHERE length(tags) = 0 AND age > 30 minutes
     \end{lstlisting}
 
+    \begin{itemize}
+        \item D'oh, \textbf{ec2\_sql} doesn't exist!
+    \end{itemize}
+
 \end{frame}
 
 
 \begin{frame}[fragile]\frametitle{Step 0}
 
     \begin{itemize}
-        \item Add the actual play
+        \item Add the actual play:
     \end{itemize}
 
     \begin{lstlisting}
@@ -104,6 +122,10 @@
     - local_action: ec2 state=absent
                         instance_ids={{ ec2_id }}
     \end{lstlisting}
+
+    \begin{itemize}
+        \item Will delete \textbf{all} instances as-is!
+    \end{itemize}
 
 \end{frame}
 
@@ -125,13 +147,17 @@
 }
     \end{lstlisting}
 
+    \begin{itemize}
+        \item All tags start \textbf{ec2\_tag\_}
+    \end{itemize}
+
 \end{frame}
 
 
 \begin{frame}[fragile]\frametitle{Step 1 - WHERE length(tags) = 0}
 
     \begin{itemize}
-        \item Drafted python:
+        \item Drafted python function:
     \end{itemize}
 
     \begin{lstlisting}[language=Python]
@@ -139,11 +165,12 @@ In [1]: def filter_prefix(items, prefix):
    ...:     return [x for x in items
                     if x.startswith(prefix)]
 
-In [2]: var_names = ['ec2_tag_a', 'ec2_time',
-   ...:              'ec2_tag_b', '']
+In [2]: var_names = ['ec2_architecture',
+   ...:              'ec2_tag_Name',
+   ...:              'ec2_tag_ansible_role']
 
 In [3]: filter_prefix(var_names, 'ec2_tag_')
-Out[3]: ['ec2_tag_a', 'ec2_tag_b']
+Out[3]: ['ec2_tag_Name', 'ec2_tag_ansible_role']
     \end{lstlisting}
 
 \end{frame}
@@ -152,7 +179,7 @@ Out[3]: ['ec2_tag_a', 'ec2_tag_b']
 \begin{frame}[fragile]\frametitle{Step 1 - WHERE length(tags) = 0}
 
     \begin{itemize}
-        \item \textbf{filter\_plugins/my\_plugins.py} for filter module:
+        \item Create \textbf{filter\_plugins/my\_plugins.py} relative to playbook:
     \end{itemize}
 
     \begin{lstlisting}[language=Python]
@@ -188,13 +215,17 @@ class FilterModule(object):
                         instance_ids={{ ec2_id }}
     \end{lstlisting}
 
+    \begin{itemize}
+        \item \textit{Halfway!}
+    \end{itemize}
+
 \end{frame}
 
 
 \begin{frame}[fragile]\frametitle{Step 2 - AND age $>$ 30 minutes}
 
     \begin{itemize}
-        \item Host variables:
+        \item Also in host variables:
     \end{itemize}
 
     \begin{lstlisting}[language=C]
@@ -227,13 +258,17 @@ def aws_age_seconds(ec2_launch_time):
     return seconds_diff.total_seconds()
     \end{lstlisting}
 
+    \begin{itemize}
+        \item Add again to filter module
+    \end{itemize}
+
 \end{frame}
 
 
 \begin{frame}[fragile]\frametitle{Step 2 - AND age $>$ 30 minutes}
 
     \begin{itemize}
-        \item Full play:
+        \item Final play:
     \end{itemize}
 
     \begin{lstlisting}
@@ -241,10 +276,10 @@ def aws_age_seconds(ec2_launch_time):
   hosts: ec2
   tasks:
     - when: >
-        ec2_launch_time|aws_age_seconds > 3600 and
         hostvars[inventory_hostname].keys()
           | filter_prefix('ec2_tag_')
           | length == 0
+        and ec2_launch_time|aws_age_seconds > 1800
       local_action: ec2 state=absent
                         instance_ids={{ ec2_id }}
     \end{lstlisting}
@@ -253,6 +288,10 @@ def aws_age_seconds(ec2_launch_time):
 
 
 \begin{frame}\frametitle{Problem: \textbf{SOLVED}}
+
+    \begin{itemize}
+        \item Bye bye anonymous instances!
+    \end{itemize}
 
     \begin{center}
         \includegraphics[width=10cm]{sad-anonymous}
