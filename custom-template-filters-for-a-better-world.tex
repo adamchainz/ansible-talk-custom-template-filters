@@ -15,7 +15,7 @@
   extendedchars=true,              % lets you use non-ASCII characters; for 8-bits encodings only, does not work with UTF-8
   frame=single,                    % adds a frame around the code
   keywordstyle=\color{blue},       % keyword style
-  language=Python,                 % the language of the code
+  language=bash,                   % the language of the code
   rulecolor=\color{black},         % if not set, the frame-color may be changed on line-breaks within not-black text (e.g. comments (green here))
   showspaces=false,                % show spaces everywhere adding particular underscores; it overrides 'showstringspaces'
   stringstyle=\color{mymauve},     % string literal style
@@ -35,28 +35,239 @@
 
 \begin{document}
 
+
 \maketitle
 
 
-% Introduction
-
-\frame{
-    \frametitle{Introduction}
-    \framesubtitle{Me}
+\begin{frame}\frametitle{Me}
 
     \begin{itemize}
-        \item Developer/DevOps/DBA at YPlan
+        \item DevOps/DBA at YPlan
     \end{itemize}
+
+\end{frame}
+
+
+\begin{frame}\frametitle{Problem: Anonymous Instances}
+
+    \begin{center}
+        \includegraphics[width=10cm]{anonymous}
+    \end{center}
+
+\end{frame}
+
+
+\begin{frame}\frametitle{Sneaky Amazon?}
+
+    \begin{center}
+        \includegraphics[width=10cm]{look-i-made-a-graph}
+    \end{center}
+
+\end{frame}
+
+
+\begin{frame}\frametitle{Naughty Jenkins!}
+
+    \begin{center}
+        \includegraphics[width=10cm]{jeeves}
+    \end{center}
+
+\end{frame}
+
+
+\begin{frame}[fragile]\frametitle{Solution}
+
+    \begin{itemize}
+        \item \textbf{clean\_resources} playbook every 15 minutes
+    \end{itemize}
+
+    \begin{lstlisting}
+- name: delete anonymous instances
+  ec2_sql:
+    sql: DELETE FROM ec2_instances
+         WHERE length(tags) = 0 AND age > 30 minutes
+    \end{lstlisting}
+
+\end{frame}
+
+
+\begin{frame}[fragile]\frametitle{Step 0}
+
+    \begin{itemize}
+        \item Add the actual play
+    \end{itemize}
+
+    \begin{lstlisting}
+- name: delete anonymous instances
+  hosts: ec2
+  tasks:
+    - local_action: ec2 state=absent
+                        instance_ids={{ ec2_id }}
+    \end{lstlisting}
+
+\end{frame}
+
+
+\begin{frame}[fragile]\frametitle{Step 1 - WHERE length(tags) = 0}
+
+    \begin{itemize}
+        \item Host variables:
+    \end{itemize}
+
+    \begin{lstlisting}[language=C]
+"ec2-54-75-123-123.eu-west-1.compute.amazonaws.com": {
+    "ec2_architecture": "x86_64",
+    "ec2_client_token": "",
+    ...
+    "ec2_tag_Name": "my_fancy_machine",
+    "ec2_tag_ansible_role": "web",
+    ...
 }
+    \end{lstlisting}
+
+\end{frame}
 
 
-\frame{
-    \frametitle{Thank you}
+\begin{frame}[fragile]\frametitle{Step 1 - WHERE length(tags) = 0}
+
+    \begin{itemize}
+        \item Drafted python:
+    \end{itemize}
+
+    \begin{lstlisting}[language=Python]
+In [1]: def filter_prefix(items, prefix):
+   ...:     return [x for x in items
+                    if x.startswith(prefix)]
+
+In [2]: var_names = ['ec2_tag_a', 'ec2_time',
+   ...:              'ec2_tag_b', '']
+
+In [3]: filter_prefix(var_names, 'ec2_tag_')
+Out[3]: ['ec2_tag_a', 'ec2_tag_b']
+    \end{lstlisting}
+
+\end{frame}
+
+
+\begin{frame}[fragile]\frametitle{Step 1 - WHERE length(tags) = 0}
+
+    \begin{itemize}
+        \item \textbf{filter\_plugins/my\_plugins.py} for filter module:
+    \end{itemize}
+
+    \begin{lstlisting}[language=Python]
+def filter_prefix(items, prefix):
+    return [x for x in items if x.startswith(prefix)]
+
+class FilterModule(object):
+    def filters(self):
+        return {
+            'filter_prefix': filter_prefix,
+        }
+    \end{lstlisting}
+
+\end{frame}
+
+
+\begin{frame}[fragile]\frametitle{Step 1 - WHERE length(tags) = 0}
+
+    \begin{itemize}
+        \item Add in to play:
+    \end{itemize}
+
+    \begin{lstlisting}
+- name: delete anonymous instances
+  hosts: ec2
+  tasks:
+    - when: >
+        hostvars[inventory_hostname].keys()
+          | filter_prefix('ec2_tag_')
+          | length == 0
+
+      local_action: ec2 state=absent
+                        instance_ids={{ ec2_id }}
+    \end{lstlisting}
+
+\end{frame}
+
+
+\begin{frame}[fragile]\frametitle{Step 2 - AND age $>$ 30 minutes}
+
+    \begin{itemize}
+        \item Host variables:
+    \end{itemize}
+
+    \begin{lstlisting}[language=C]
+"ec2-54-75-123-123.eu-west-1.compute.amazonaws.com": {
+    ...
+    "ec2_launch_time": "2014-11-15T11:25:57.000Z",
+    ...
+}
+    \end{lstlisting}
+
+\end{frame}
+
+
+\begin{frame}[fragile]\frametitle{Step 2 - AND age $>$ 30 minutes}
+
+    \begin{itemize}
+        \item Coding by Stack Overflow:
+    \end{itemize}
+
+    \begin{lstlisting}[language=Python]
+def aws_age_seconds(ec2_launch_time):
+    # Strip trailing subsecond part
+    launch_time = ec2_launch_time[:-len('.000Z')]
+    # Turn into datetime
+    time_format = "%Y-%m-%dT%H:%M:%S"
+    time_tuple = strptime(launch_time, time_format)
+    time_dt = datetime(*time_tuple[:6])
+    # Return difference in seconds
+    diff = datetime.utcnow() - time_dt
+    return seconds_diff.total_seconds()
+    \end{lstlisting}
+
+\end{frame}
+
+
+\begin{frame}[fragile]\frametitle{Step 2 - AND age $>$ 30 minutes}
+
+    \begin{itemize}
+        \item Full play:
+    \end{itemize}
+
+    \begin{lstlisting}
+- name: delete anonymous instances
+  hosts: ec2
+  tasks:
+    - when: >
+        ec2_launch_time|aws_age_seconds > 3600 and
+        hostvars[inventory_hostname].keys()
+          | filter_prefix('ec2_tag_')
+          | length == 0
+      local_action: ec2 state=absent
+                        instance_ids={{ ec2_id }}
+    \end{lstlisting}
+
+\end{frame}
+
+
+\begin{frame}\frametitle{Problem: \textbf{SOLVED}}
+
+    \begin{center}
+        \includegraphics[width=10cm]{sad-anonymous}
+    \end{center}
+
+\end{frame}
+
+
+\begin{frame}\frametitle{Thank you}
 
     \begin{itemize}
         \item \url{me@adamj.eu}
     \end{itemize}
-}
+
+\end{frame}
 
 
 \end{document}
