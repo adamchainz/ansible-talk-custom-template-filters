@@ -119,18 +119,21 @@
 - name: delete anonymous instances
   hosts: ec2
   tasks:
-    - local_action: ec2 state=absent
+    - when: "True"  # length(tags) = 0 AND
+                    # age > 30 minutes
+      local_action: ec2 state=absent
                         instance_ids={{ ec2_id }}
     \end{lstlisting}
 
     \begin{itemize}
         \item Will delete \textbf{all} instances as-is!
+        \item Need to fill in `\textbf{when}'
     \end{itemize}
 
 \end{frame}
 
 
-\begin{frame}[fragile]\frametitle{Step 1 - WHERE length(tags) = 0}
+\begin{frame}[fragile]\frametitle{Step 1 - length(tags) = 0}
 
     \begin{itemize}
         \item Host variables:
@@ -154,7 +157,7 @@
 \end{frame}
 
 
-\begin{frame}[fragile]\frametitle{Step 1 - WHERE length(tags) = 0}
+\begin{frame}[fragile]\frametitle{Step 1 - length(tags) = 0}
 
     \begin{itemize}
         \item Drafted python function:
@@ -176,7 +179,7 @@ Out[3]: ['ec2_tag_Name', 'ec2_tag_ansible_role']
 \end{frame}
 
 
-\begin{frame}[fragile]\frametitle{Step 1 - WHERE length(tags) = 0}
+\begin{frame}[fragile]\frametitle{Step 1 - length(tags) = 0}
 
     \begin{itemize}
         \item Create \textbf{filter\_plugins/my\_plugins.py} relative to playbook:
@@ -196,7 +199,7 @@ class FilterModule(object):
 \end{frame}
 
 
-\begin{frame}[fragile]\frametitle{Step 1 - WHERE length(tags) = 0}
+\begin{frame}[fragile]\frametitle{Step 1 - length(tags) = 0}
 
     \begin{itemize}
         \item Add in to play:
@@ -222,7 +225,7 @@ class FilterModule(object):
 \end{frame}
 
 
-\begin{frame}[fragile]\frametitle{Step 2 - AND age $>$ 30 minutes}
+\begin{frame}[fragile]\frametitle{Step 2 - age $>$ 30 minutes}
 
     \begin{itemize}
         \item Also in host variables:
@@ -236,10 +239,14 @@ class FilterModule(object):
 }
     \end{lstlisting}
 
+    \begin{itemize}
+        \item It's a string since JSON has no standard datetime format.
+    \end{itemize}
+
 \end{frame}
 
 
-\begin{frame}[fragile]\frametitle{Step 2 - AND age $>$ 30 minutes}
+\begin{frame}[fragile]\frametitle{Step 2 - age $>$ 30 minutes}
 
     \begin{itemize}
         \item Coding by Stack Overflow:
@@ -265,7 +272,7 @@ def aws_age_seconds(ec2_launch_time):
 \end{frame}
 
 
-\begin{frame}[fragile]\frametitle{Step 2 - AND age $>$ 30 minutes}
+\begin{frame}[fragile]\frametitle{Step 2 - age $>$ 30 minutes}
 
     \begin{itemize}
         \item Final play:
