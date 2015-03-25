@@ -49,7 +49,7 @@
 \end{frame}
 
 
-\begin{frame}\frametitle{Problem: Anonymous Instances}
+\begin{frame}\frametitle{Problem: Anonymous EC2 Instances}
 
     \begin{center}
         \includegraphics[width=10cm]{anonymous}
@@ -82,7 +82,7 @@
     \end{center}
 
     \begin{itemize}
-        \item Oh Jenkins!
+        \item Stopping a build = stopping Ansible on Jenkins finishing the two API calls to launch and tag the instance
     \end{itemize}
 
 \end{frame}
@@ -91,8 +91,8 @@
 \begin{frame}[fragile]\frametitle{Solution}
 
     \begin{itemize}
-        \item Have \textbf{clean\_resources} playbook every 15 minutes to clean all the things
-        \item Added:
+        \item Already had \textbf{clean\_resources} playbook run every 15 minutes to clean away cruft
+        \item Just needed to add:
     \end{itemize}
 
     \begin{lstlisting}
@@ -112,7 +112,7 @@
 \begin{frame}[fragile]\frametitle{Step 0}
 
     \begin{itemize}
-        \item Add the actual play:
+        \item Add the actual play using \textbf{ec2} module:
     \end{itemize}
 
     \begin{lstlisting}
